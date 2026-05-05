@@ -347,7 +347,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 <div id="hdr">
   <div>
     <h1>⚖️ Legislação Tributária — Maricá/RJ</h1>
-    <div class="sub">Secretaria de Gestão Tributária — SEGET</div>
+    <div class="sub">Secretaria de Gestão Tributária e Fiscal — SEGET</div>
   </div>
   <span class="badge-pub">👁 Consulta Pública</span>
 </div>
@@ -646,7 +646,25 @@ function abrirCons(id){
   // Se tem HTML pré-renderizado salvo, usa diretamente (mais rápido e confiável)
   if(c.html){
     corp.innerHTML = c.html;
-    abrir('Texto Consolidado — ' + c.leiBaseNome);
+    // Injeta link clicável para a lei modificadora no cabeçalho
+    var lMod2 = leis.find(function(l){ return l.id===c.leiModId; });
+    if(lMod2){
+      var cabecalho = corp.querySelector('.doc-cabecalho');
+      if(cabecalho){
+        var badge = cabecalho.querySelector('.doc-lei-cons');
+        if(badge && badge.parentNode) badge.parentNode.removeChild(badge);
+        var linkDiv = document.createElement('div');
+        linkDiv.style.marginTop = '.75rem';
+        var linkSpan = document.createElement('span');
+        linkSpan.className = 'doc-lei-cons-link';
+        linkSpan.title = 'Abrir ' + leiNomeC(lMod2);
+        linkSpan.innerHTML = '&#x1F4CE; Texto consolidado com as altera\u00e7\u00f5es da ' + leiNomeC(lMod2);
+        linkSpan.onclick = function(){ fechar(); setTimeout(function(){ abrirNorma(lMod2.id); }, 80); };
+        linkDiv.appendChild(linkSpan);
+        cabecalho.appendChild(linkDiv);
+      }
+    }
+    abrir('Texto Consolidado \u2014 ' + c.leiBaseNome);
     return;
   }
 
