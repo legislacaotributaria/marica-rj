@@ -381,12 +381,12 @@ textarea.form-control{resize:vertical;min-height:100px;line-height:1.65;}
     <!-- ══ DASHBOARD ══ -->
     <div id="page-dashboard">
       <div class="stats" id="stats"></div>
-      <div class="card card-accent">
-        <div class="card-header"><span class="card-title">⚠ Consolidação pendente</span></div>
+      <div class="card">
+        <div class="card-header"><span class="card-title" id="dash-pendentes-titulo">📄 Normas com texto disponível</span></div>
         <div class="card-body" id="dash-pendentes"></div>
       </div>
       <div class="card">
-        <div class="card-header"><span class="card-title">Últimas consolidações</span></div>
+        <div class="card-header"><span class="card-title">📑 Últimas consolidações</span></div>
         <div class="card-body" id="dash-recentes"></div>
       </div>
     </div>
@@ -1287,49 +1287,109 @@ function showPage(id){
 // ═══════════════════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════
+function verNorma(id){
+  const l = db.leis.find(x=>x.id===id);
+  if(!l) return;
+  // Abre modal com o texto da norma
+  const modal = document.getElementById('modal-ver-norma');
+  if(!modal){ criarModalVerNorma(); }
+  const m = document.getElementById('modal-ver-norma');
+  m.querySelector('.modal-title').textContent = leiNome(l);
+
+  let corpo = '';
+  if(l.preambulo) corpo += `<div class="doc-ementa-bloco"><div class="doc-ementa-txt">${l.preambulo}</div></div>`;
+  if(l.formulaPromulgacao) corpo += `<div class="doc-formula">${l.formulaPromulgacao}</div>`;
+  if(l.artigos && l.artigos.length){
+    // Renderiza artigos inline
+    const tmp = document.createElement('div');
+    computePaths(l.artigos);
+    l.artigos.forEach(a => renderHierDoc(a, l.artigos, {}, '', tmp));
+    corpo += tmp.innerHTML;
+  } else {
+    corpo += '<p style="color:var(--muted);text-align:center;padding:2rem">Texto ainda não cadastrado.</p>';
+  }
+  if(l.dataExtenso || l.assinatura){
+    const loc = l.municipio||'Maricá, Estado do Rio de Janeiro, RJ';
+    corpo += `<div class="doc-fecho">`;
+    if(l.dataExtenso) corpo += `<div class="doc-fecho-local">GABINETE DO PREFEITO DO MUNICÍPIO DE MARICÁ, ${loc}, ${l.dataExtenso}.</div>`;
+    if(l.assinatura) corpo += `<div class="doc-fecho-assinatura">${l.assinatura}</div>`;
+    corpo += `</div>`;
+  }
+  m.querySelector('#mnv-body').innerHTML = corpo;
+  m.classList.remove('hidden');
+}
+
+function criarModalVerNorma(){
+  const div = document.createElement('div');
+  div.className = 'overlay hidden';
+  div.id = 'modal-ver-norma';
+  div.innerHTML = `<div class="modal" style="max-width:860px">
+    <div class="modal-head">
+      <span class="modal-title"></span>
+      <button class="modal-x" onclick="document.getElementById('modal-ver-norma').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body" id="mnv-body" style="max-height:75vh;overflow-y:auto;padding:1.5rem"></div>
+  </div>`;
+  document.body.appendChild(div);
+  div.addEventListener('click', e => { if(e.target===div) div.classList.add('hidden'); });
+}
+
 function renderDashboard(){
   const total=db.leis.length;
-  const vig=db.leis.filter(l=>l.situacao!=='revogada').length;
+  const vig=db.leis.filter(l=>l.situacao==='vigente').length;
   const pend=db.leis.filter(l=>l.situacao==='vigente-alt').length;
+  const rev=db.leis.filter(l=>l.situacao==='revogada').length;
   const cons=db.consolidacoes.length;
+  const comTexto=db.leis.filter(l=>l.artigos&&l.artigos.length).length;
 
   document.getElementById('stats').innerHTML=`
-    <div class="stat stat-accent"><div class="stat-num">${total}</div><div class="stat-label">Normas cadastradas</div></div>
-    <div class="stat"><div class="stat-num">${vig}</div><div class="stat-label">Vigentes</div></div>
-    <div class="stat"><div class="stat-num" style="color:var(--gold)">${pend}</div><div class="stat-label">Consolidação pendente</div></div>
-    <div class="stat"><div class="stat-num" style="color:var(--green)">${cons}</div><div class="stat-label">Consolidações realizadas</div></div>
+    <div class="stat stat-accent" onclick="showPage('leis')" style="cursor:pointer" title="Ver acervo">
+      <div class="stat-num">${total}</div><div class="stat-label">Normas no acervo</div>
+    </div>
+    <div class="stat" onclick="showPage('leis')" style="cursor:pointer">
+      <div class="stat-num" style="color:var(--green)">${vig}</div><div class="stat-label">Vigentes</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:var(--gold)">${pend}</div><div class="stat-label">Com alterações</div>
+    </div>
+    <div class="stat" onclick="showPage('historico')" style="cursor:pointer">
+      <div class="stat-num" style="color:var(--blue)">${cons}</div><div class="stat-label">Consolidações</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">${comTexto}</div><div class="stat-label">Com texto cadastrado</div>
+    </div>
   `;
 
-  const pendentes=db.leis.filter(l=>l.situacao==='vigente-alt');
-  document.getElementById('dash-pendentes').innerHTML=pendentes.length
-    ? pendentes.map(l=>`
-      <div class="lei-row">
-        <div class="lei-row-info">
-          <div class="lei-row-num">${tipoPill(l.tipo)} ${leiNome(l)}</div>
-          <div class="lei-row-ementa">${l.ementa}</div>
-          <div class="lei-row-meta"><span>${tribLabel(l.tributo)}</span></div>
-        </div>
-        <div class="lei-row-actions">
-          ${sitBadge(l.situacao)}
-          <button class="btn btn-navy btn-sm" onclick="iniciarConsLei(${l.id})">Consolidar agora</button>
-        </div>
-      </div>`).join('')
-    : '<div class="empty-state"><span class="ico">✓</span><p>Nenhuma consolidação pendente.</p></div>';
-
+  // Consolidações recentes — clicáveis
   const ultimas=[...db.consolidacoes].reverse().slice(0,4);
   document.getElementById('dash-recentes').innerHTML=ultimas.length
     ? ultimas.map(c=>`
-      <div class="hist-row">
+      <div class="hist-row" onclick="showPage('historico');setTimeout(()=>verConsolidado(${c.id}),100)" style="cursor:pointer">
         <div class="hist-info">
-          <div class="hist-title">${c.leiBaseNome}</div>
+          <div class="hist-title">📑 ${c.leiBaseNome}</div>
           <div class="hist-sub">Alterações da ${c.leiModNome} · ${c.nalts} modificação(ões) · ${c.data}</div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <span class="badge b-con">Consolidada</span>
-          <button class="btn btn-sm" onclick="verConsolidado(${c.id})">Ver texto</button>
-        </div>
+        <span class="badge b-con">Ver →</span>
       </div>`).join('')
     : '<div class="empty-state"><span class="ico">◷</span><p>Nenhuma consolidação realizada ainda.</p></div>';
+
+  // Normas com texto — acesso rápido
+  const comArt = db.leis.filter(l=>l.artigos&&l.artigos.length).slice(0,6);
+  document.getElementById('dash-pendentes').innerHTML = comArt.length
+    ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+        ${comArt.map(l=>`
+          <div onclick="verNorma(${l.id})" style="cursor:pointer;background:var(--surface);border:1px solid var(--bord);border-radius:8px;padding:14px;transition:.15s" 
+               onmouseover="this.style.borderColor='var(--navy)';this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)'"
+               onmouseout="this.style.borderColor='var(--bord)';this.style.boxShadow='none'">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              ${tipoPill(l.tipo)}
+              <span style="font-weight:600;font-size:13px;color:var(--navy)">${leiNome(l)}</span>
+            </div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.4">${l.ementa.slice(0,80)}${l.ementa.length>80?'…':''}</div>
+            <div style="font-size:10px;color:var(--blue);margin-top:8px;font-weight:600">📄 ${l.artigos.length} dispositivos · clique para ler →</div>
+          </div>`).join('')}
+      </div>`
+    : '<div class="empty-state"><span class="ico">§</span><p>Nenhuma norma com texto cadastrado ainda.</p></div>';
 
   renderSbRecentes();
 }
@@ -1381,24 +1441,27 @@ function renderLeis(){
   );
   document.getElementById('acervo-list').innerHTML=lista.length
     ? lista.map(l=>`
-      <div class="lei-row">
+      <div class="lei-row" onclick="verNorma(${l.id})" style="cursor:pointer">
         <div class="lei-row-info">
           <div class="lei-row-num">
             ${tipoPill(l.tipo)} ${leiNome(l)}
-            ${l.link&&l.link.startsWith('http')?`<a href="${l.link}" target="_blank" style="font-size:11px;color:var(--blue);margin-left:4px;">↗ PDF</a>`:l.link?`<span style="font-size:11px;color:var(--muted);margin-left:4px;">${l.link}</span>`:''}
+            ${l.link&&l.link.startsWith('http')?`<a href="${l.link}" target="_blank" style="font-size:11px;color:var(--blue);margin-left:4px;" onclick="event.stopPropagation()">↗ PDF</a>`:l.link?`<span style="font-size:11px;color:var(--muted);margin-left:4px;">${l.link}</span>`:''}
           </div>
           <div class="lei-row-ementa">${l.ementa}</div>
           <div class="lei-row-meta">
             <span>${tribLabel(l.tributo)}</span>
-            <span>${l.artigos&&l.artigos.length?l.artigos.length+' artigo(s) cadastrado(s)':'sem artigos cadastrados'}</span>
+            <span>${l.artigos&&l.artigos.length?l.artigos.length+' dispositivos':'sem texto cadastrado'}</span>
           </div>
         </div>
-        <div class="lei-row-actions">
+        <div class="lei-row-actions" onclick="event.stopPropagation()">
           ${sitBadge(l.situacao)}
-          ${l.situacao==='vigente-alt'?`<button class="btn btn-navy btn-sm" onclick="iniciarConsLei(${l.id})">Consolidar</button>`:''}
-          <button class="btn btn-sm btn-gold" onclick="abrirImportarDoAcervo(${l.id})">↓ Importar texto</button>
-          <button class="btn btn-sm" onclick="editarLei(${l.id})">Editar</button>
-          <button class="btn btn-sm btn-danger" onclick="removerLei(${l.id})">Remover</button>
+          ${l.artigos&&l.artigos.length?`<button class="btn btn-sm btn-navy" onclick="verNorma(${l.id})">📄 Ver texto</button>`:''}
+          <span class="btn-editar-grupo">
+            ${l.situacao==='vigente-alt'?`<button class="btn btn-navy btn-sm" onclick="iniciarConsLei(${l.id})">Consolidar</button>`:''}
+            <button class="btn btn-sm btn-gold" onclick="abrirImportarDoAcervo(${l.id})">↓ Importar</button>
+            <button class="btn btn-sm" onclick="editarLei(${l.id})">Editar</button>
+            <button class="btn btn-sm btn-danger" onclick="removerLei(${l.id})">Remover</button>
+          </span>
         </div>
       </div>`).join('')
     : '<div class="empty-state"><span class="ico">§</span><p>Nenhuma lei encontrada.</p></div>';
@@ -2778,35 +2841,38 @@ function toggleAnexoHist(uid){
   const style = document.createElement('style');
   style.textContent = `
     .modo-leitura #nav-consolidar { display:none!important; }
-    .modo-leitura .btn-danger { display:none!important; }
+    .modo-leitura #nav-importar { display:none!important; }
+    .modo-leitura .btn-editar-grupo { display:none!important; }
     .modo-leitura [onclick*="openModal('modal-lei')"] { display:none!important; }
-    .modo-leitura [onclick*="removerLei"] { display:none!important; }
-    .modo-leitura [onclick*="iniciarConsLei"] { display:none!important; }
-    .modo-leitura [onclick*="abrirImportarDoAcervo"] { display:none!important; }
-    .modo-leitura [onclick*="editarLei"] { display:none!important; }
+    .modo-leitura [onclick*="resetFormLei"] { display:none!important; }
     .modo-leitura [onclick*="excluirConsolidacao"] { display:none!important; }
     .modo-leitura [onclick*="reabrirConsolidacao"] { display:none!important; }
-    .modo-leitura .btn-gold { display:none!important; }
+    .modo-leitura [onclick*="editarConsolidacao"] { display:none!important; }
     .modo-leitura #header-btns { display:none!important; }
+    .modo-leitura .sb-link[onclick*="consolidar"] { display:none!important; }
   `;
   document.head.appendChild(style);
 
-  // Adiciona badge de consulta no header
   setTimeout(function(){
-    const h = document.querySelector('#header .header-sub, #header h1, #header');
-    if(h){
+    // Badge no header
+    const hd = document.querySelector('#header');
+    if(hd){
       const badge = document.createElement('span');
-      badge.style.cssText = 'font-size:11px;background:rgba(255,255,255,.15);padding:3px 8px;border-radius:10px;margin-left:10px;opacity:.85';
+      badge.style.cssText = 'font-size:11px;background:rgba(255,255,255,.18);padding:3px 10px;border-radius:10px;margin-left:12px;white-space:nowrap';
       badge.textContent = '👁 Consulta pública';
-      h.appendChild(badge);
+      hd.appendChild(badge);
     }
-  }, 100);
+    // Muda título da seção pendentes no dashboard
+    const t = document.getElementById('dash-pendentes-titulo');
+    if(t) t.textContent = 'Normas com texto disponível';
+  }, 150);
 
-  // Bloqueia operações de escrita
+  // Bloqueia escrita
   window.salvarLei = function(){};
   window.removerLei = function(){};
   window.excluirConsolidacao = function(){};
   window.saveDB = function(){};
+  window.iniciarConsLei = function(){};
 })();
 
 renderDashboard();
