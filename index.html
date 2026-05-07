@@ -340,6 +340,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .doc-fecho-local{font-size:13px;color:var(--text);margin-bottom:1.5rem;font-family:'IBM Plex Mono',monospace;}
 .doc-fecho-assinatura{font-size:13px;font-weight:700;color:var(--navy);white-space:pre-line;
   line-height:2;font-family:'IBM Plex Mono',monospace;}
+
+/* ── BENEFÍCIOS FISCAIS ── */
+#sec-benef .subsec-titulo{border-left-color:var(--green);color:var(--green);}
+#sec-benef .sec-titulo{color:var(--green);}
+/* ── SUBTÓPICOS ADM ── */
+#sec-adm .subsec-titulo{border-left-color:#7c3aed;color:#5b21b6;}
+.subsec-letra{display:inline-block;width:20px;font-weight:700;color:var(--navy);}
 </style>
 </head>
 <body>
@@ -457,14 +464,46 @@ function render(){
     if(g.length) tCorpo+='<div class="subsec"><div class="subsec-titulo">'+t.e+' '+t.n+'</div><div class="grid">'+g.map(cardN).join('')+'</div></div>';
   });
   if(tCorpo) h+='<div class="sec" id="sec-trib"><div class="sec-hdr"><span class="sec-titulo">&#x2696; II &mdash; Normas Tributárias por Espécie</span></div>'+tCorpo+'</div>';
-  var aL=leis.filter(function(l){return l.tipo==='lei'&&l.tributo==='geral'&&l.situacao!=='revogada';});
-  var aD=leis.filter(function(l){return l.tipo==='dec'&&l.situacao!=='revogada';});
-  var aO=leis.filter(function(l){return ['in','port','res','ot','edital'].indexOf(l.tipo)>=0&&l.situacao!=='revogada';});
-  var aCorpo='';
-  if(aL.length) aCorpo+='<div class="subsec"><div class="subsec-titulo">&#x1F3DB; Legislação</div><div class="grid">'+aL.map(cardN).join('')+'</div></div>';
-  if(aD.length) aCorpo+='<div class="subsec"><div class="subsec-titulo">&#x1F4CB; Decretos</div><div class="grid">'+aD.map(cardN).join('')+'</div></div>';
-  if(aO.length) aCorpo+='<div class="subsec"><div class="subsec-titulo">&#x1F4CC; Instruções, Portarias e Resoluções</div><div class="grid">'+aO.map(cardN).join('')+'</div></div>';
-  if(aCorpo) h+='<div class="sec" id="sec-adm"><div class="sec-hdr"><span class="sec-titulo">&#x1F3DB; III &mdash; Administração Tributária</span></div>'+aCorpo+'</div>';
+
+  // ── SEÇÃO III — BENEFÍCIOS FISCAIS ──────────────────────────────
+  var bIds = [9, 6];  // id: 9=Lei 3.624/2025, 6=LC 413/2025
+  var bLeis = bIds.map(function(id){ return leis.find(function(l){ return l.id===id; }); }).filter(Boolean);
+  // Adicionar as que ainda não temos cadastradas (mostrar como pendentes)
+  var bCorpo = '';
+  if(bLeis.length){
+    bCorpo += '<div class="subsec"><div class="subsec-titulo">&#x1F4CB; Vigentes no acervo</div><div class="grid">' + bLeis.map(cardN).join('') + '</div></div>';
+  }
+  // Normas de benefícios não cadastradas ainda (cartões estáticos informativos)
+  var bPend = [
+    {num:'3.428/2023', desc:'Programa Passaporte Universitário — isenção de tributos para instituições de ensino'},
+    {num:'LC 357/2021', desc:'Incentivos fiscais de ISS, IPTU e Taxas — Programa DESENVOLVE MARICÁ'},
+    {num:'LC 251/2014', desc:'Isenção do Estado do RJ e suas autarquias de taxas e contribuições'},
+    {num:'LC 199/2009', desc:'Isenção de ISSQN, ITBI e IPTU para habitações de interesse social'}
+  ];
+  bCorpo += '<div class="subsec"><div class="subsec-titulo">&#x1F4D1; Outras normas de benefícios fiscais</div><div class="grid">'
+    + bPend.map(function(b){ return '<div class="cn st"><div class="cn-top"><div style="display:flex;align-items:center;gap:6px">'+tipoPill('lei')+'<span class="cn-num">'+b.num+'</span></div></div><div class="cn-em">'+b.desc+'</div><div class="cn-ft">📋 sem texto cadastrado</div></div>'; }).join('')
+    + '</div></div>';
+  if(bCorpo) h += '<div class="sec" id="sec-benef"><div class="sec-hdr"><span class="sec-titulo">&#x1F4B0; III &mdash; Benefícios Fiscais</span></div>' + bCorpo + '</div>';
+
+  // ── SEÇÃO IV — NORMAS GERAIS DE ADMINISTRAÇÃO TRIBUTÁRIA ─────────
+  // Mapeamento por subtópico conforme documento SEGET
+  var admSubtopicos = [
+    { letra:'a', titulo:'Procedimentos de Fiscalização e Cadastro', ids:[39,56,57,22,28] },
+    { letra:'b', titulo:'Cobrança de Créditos Tributários e Não Tributários', ids:[35,16,24], extra:[{num:'Dec. 126/2014', desc:'Medidas para incremento da cobrança de créditos inscritos ou não em dívida ativa'}] },
+    { letra:'c', titulo:'Extinção de Créditos Tributários e Não Tributários', ids:[8,32,29] },
+    { letra:'d', titulo:'Parcelamento', ids:[2,18] },
+    { letra:'e', titulo:'Pagamento', ids:[37,12] },
+    { letra:'f', titulo:'Estrutura e Governança', ids:[36,11,10] },
+    { letra:'g', titulo:'Comitês e Grupos Especiais', ids:[17,50,55] }
+  ];
+  var admCorpo = '';
+  admSubtopicos.forEach(function(sub){
+    var normas = sub.ids.map(function(id){ return leis.find(function(l){ return l.id===id; }); }).filter(Boolean);
+    var extras = (sub.extra||[]).map(function(e){ return '<div class="cn st"><div class="cn-top"><div style="display:flex;align-items:center;gap:6px">'+tipoPill('dec')+'<span class="cn-num">'+e.num+'</span></div></div><div class="cn-em">'+e.desc+'</div><div class="cn-ft">📋 sem texto cadastrado</div></div>'; });
+    if(!normas.length && !extras.length) return;
+    admCorpo += '<div class="subsec"><div class="subsec-titulo">' + sub.letra + ') ' + sub.titulo + '</div><div class="grid">' + normas.map(cardN).join('') + extras.join('') + '</div></div>';
+  });
+  if(admCorpo) h += '<div class="sec" id="sec-adm"><div class="sec-hdr"><span class="sec-titulo">&#x1F3DB; IV &mdash; Normas Gerais de Administração Tributária</span></div>' + admCorpo + '</div>';
   var rev=leis.filter(function(l){return l.situacao==='revogada';});
   if(rev.length) h+='<div class="sec" id="sec-rev"><div class="sec-hdr"><span class="sec-titulo">&#x1F5C2; Normas Revogadas</span><span class="sec-n">'+rev.length+'</span></div><div class="grid">'+rev.map(cardN).join('')+'</div></div>';
   cont.innerHTML=h||'<div class="empty"><div class="empty-ico">§</div><p>Nenhuma norma cadastrada.</p></div>';
