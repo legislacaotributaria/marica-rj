@@ -61,6 +61,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .cm:hover{border-color:var(--blue);background:#eff6ff}
 .cm-num{font-size:11px;font-weight:700;color:var(--navy)}
 .cm-em{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4}
+.subsec-dd-hdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:8px 12px;border-radius:8px;border:1px solid var(--bord);background:#fff;transition:background .15s,border-color .15s;user-select:none}
+.subsec-dd-hdr:hover{background:var(--bg);border-color:var(--navy)}
+.subsec-dd-hdr .subsec-titulo{margin:0;border:none;padding:0}
+.subsec-dd-arrow{font-size:14px;color:var(--muted);transition:transform .25s;flex-shrink:0}
+.subsec-dd-arrow.open{transform:rotate(180deg)}
+.subsec-dd-body{overflow:hidden;max-height:0;transition:max-height .35s ease,opacity .25s ease;opacity:0}
+.subsec-dd-body.open{max-height:2000px;opacity:1}
 .cc{background:linear-gradient(135deg,#1a3a6c,#2563a8);color:#fff;border-radius:var(--r);
   padding:18px;cursor:pointer;transition:all .15s;box-shadow:var(--shadow)}
 .cc:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(26,58,108,.35)}
@@ -462,7 +469,18 @@ function render(){
   if(ctm.length||lcMod.length){
     var corpo='';
     if(ctm.length) corpo+='<div class="grid" style="margin-bottom:12px">'+ctm.map(cardN).join('')+'</div>';
-    if(lcMod.length) corpo+='<div class="subsec"><div class="subsec-titulo">Leis complementares incorporadas ao Código</div><div class="grid-sm">'+lcMod.map(cardMod).join('')+'</div></div>';
+    if(lcMod.length){
+    var ddId='dd-lcmod';
+    corpo+='<div class="subsec">'
+      +'<div class="subsec-dd-hdr" onclick="toggleLcMod()" id="'+ddId+'-hdr">'
+      +'<span class="subsec-titulo">Leis complementares incorporadas ao Código <span style="font-weight:400;color:var(--muted);font-size:10px;margin-left:4px">('+lcMod.length+')</span></span>'
+      +'<span class="subsec-dd-arrow" id="'+ddId+'-arrow">▼</span>'
+      +'</div>'
+      +'<div class="subsec-dd-body" id="'+ddId+'-body">'
+      +'<div class="grid-sm" style="margin-top:10px">'+lcMod.map(cardMod).join('')+'</div>'
+      +'</div>'
+      +'</div>';
+  }
     h+='<div class="sec" id="sec-cod"><div class="sec-hdr"><span class="sec-titulo">&#x1F4D6; I &mdash; Código Tributário Municipal</span><span class="sec-n">'+(ctm.length+lcMod.length)+'</span></div>'+corpo+'</div>';
   }
   var tribs=[{id:'issqn',e:'&#x2696;',n:'ISSQN'},{id:'iptu',e:'&#x1F3E0;',n:'IPTU'},{id:'itbi',e:'&#x1F511;',n:'ITBI'},{id:'taxas',e:'&#x1F4CB;',n:'Taxas'}];
@@ -958,6 +976,13 @@ function abrirCons(id){
   abrir('Texto Consolidado — '+c.leiBaseNome);
 }
 
+function toggleLcMod(){
+  var body=document.getElementById('dd-lcmod-body');
+  var arrow=document.getElementById('dd-lcmod-arrow');
+  var isOpen=body.classList.contains('open');
+  if(isOpen){body.classList.remove('open');arrow.classList.remove('open');}
+  else{body.classList.add('open');arrow.classList.add('open');}
+}
 function abrir(titulo){document.getElementById('mtit').textContent=titulo;document.getElementById('modal').classList.add('open');document.getElementById('mcorp').scrollTop=0;document.getElementById('mfooter').style.display='flex';}
 function fechar(){document.getElementById('modal').classList.remove('open');document.getElementById('mfooter').style.display='none';}
 
