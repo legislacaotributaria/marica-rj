@@ -1095,34 +1095,33 @@ function carregarBackup(inp){
   reader.readAsText(file);
 }
 
+// Captura o HTML original no momento do carregamento da página
+var _htmlOriginal = (function(){
+  var abre='<textarea id="db-data" style="display:none">';
+  var fecha='</textarea>';
+  var html=document.documentElement.outerHTML;
+  var p1=html.indexOf(abre);
+  var p2=html.indexOf(fecha, p1+abre.length);
+  if(p1<0||p2<0) return null;
+  // Guardar: parte antes do JSON + parte depois
+  return {antes: html.slice(0,p1+abre.length), depois: html.slice(p2)};
+})();
+
 function gerarDownloadIndex(){
+  if(!_htmlOriginal){
+    alert('Erro: não foi possível capturar o HTML original. Tente recarregar a página.');
+    return;
+  }
   var dbStr=JSON.stringify(DB);
-  // Carregar o HTML do próprio arquivo via fetch, substituir o JSON da textarea
-  fetch(window.location.href, {cache:'no-store'})
-    .then(function(r){ return r.text(); })
-    .then(function(html){
-      // Substituir o conteúdo entre as tags da textarea db-data
-      var abre='<textarea id="db-data" style="display:none">';
-      var fecha='</textarea>';
-      var p1=html.indexOf(abre);
-      var p2=html.indexOf(fecha, p1+abre.length);
-      if(p1<0||p2<0){
-        alert('Erro: não foi possível localizar o DB no arquivo.');
-        return;
-      }
-      var novoHtml=html.slice(0,p1+abre.length)+dbStr+html.slice(p2);
-      var blob=new Blob([novoHtml],{type:'text/html;charset=utf-8'});
-      var a=document.createElement('a');
-      a.href=URL.createObjectURL(blob);
-      var d=new Date();
-      a.download='index_'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.html';
-      document.body.appendChild(a);a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(a.href);
-    })
-    .catch(function(){
-      alert('Não foi possível baixar o arquivo.\n\nSe estiver abrindo o index localmente (file://), use o GitHub Pages ou um servidor local.\n\nAlternativamente: salve a página manualmente com Ctrl+S após a sincronização.');
-    });
+  var novoHtml=_htmlOriginal.antes+dbStr+_htmlOriginal.depois;
+  var blob=new Blob([novoHtml],{type:'text/html;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  var d=new Date();
+  a.download='index_'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.html';
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
 }
 
 
