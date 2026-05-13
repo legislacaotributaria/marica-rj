@@ -1080,9 +1080,14 @@ function carregarBackup(inp){
     leis=DB.leis; cons=DB.consolidacoes;
     render();
 
+    // Contar leis com anexos no backup
+    var leisComAnexos=bk.leis.filter(function(l){return l.anexos&&l.anexos.length>0;});
+    var totalAnexos=bk.leis.reduce(function(acc,l){return acc+(l.anexos?l.anexos.length:0);},0);
+
     msg.style.cssText='display:block;background:#f0fdf4;border:1px solid #86efac;color:#166534';
     msg.innerHTML='<strong>✅ Feito!</strong> '
       +novasLeis.length+' normas, '+novasCons.length+' consolidação(ões).<br>'
+      +totalAnexos+' anexo(s) em '+leisComAnexos.length+' norma(s).<br>'
       +'Confira o index atualizado acima.<br>'
       +'Quando estiver pronto, clique em <strong>💾 Salvar index.html</strong> e suba para o GitHub.';
     document.getElementById('sync-btns').style.display='flex';
@@ -1093,7 +1098,7 @@ function carregarBackup(inp){
 function gerarDownloadIndex(){
   var dbStr=JSON.stringify(DB);
   // Carregar o HTML do próprio arquivo via fetch, substituir o JSON da textarea
-  fetch(window.location.href)
+  fetch(window.location.href, {cache:'no-store'})
     .then(function(r){ return r.text(); })
     .then(function(html){
       // Substituir o conteúdo entre as tags da textarea db-data
