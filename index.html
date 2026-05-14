@@ -295,7 +295,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 /* Cabeçalho padrão lei brasileira */
 .doc-ementa-bloco{display:flex;justify-content:flex-end;margin-bottom:1.5rem;}
 .doc-ementa-txt{max-width:52%;text-align:justify;font-size:12px;font-family:'IBM Plex Mono',monospace;line-height:1.65;color:var(--text);border-left:3px solid var(--navy);padding-left:12px;font-weight:500;}
-.doc-formula{margin:1.25rem 0 1.5rem;font-size:13px;font-family:'IBM Plex Mono',monospace;line-height:1.75;color:var(--text);font-style:italic;text-align:center;border-top:1px solid var(--bord);padding-top:1rem;}
+.doc-formula{margin:1.25rem 0 1.5rem;font-size:13px;font-family:'IBM Plex Mono',monospace;line-height:1.75;color:var(--text);font-style:italic;text-align:center;border-top:1px solid var(--bord);padding-top:1rem;white-space:pre-line;}
 .doc-fecho{margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid var(--bord);text-align:center;}
 .doc-fecho-local{font-size:13px;color:var(--text);margin-bottom:1.5rem;font-family:'IBM Plex Mono',monospace;}
 .doc-fecho-assinatura{font-size:13px;font-weight:700;color:var(--navy);white-space:pre-line;line-height:2;font-family:'IBM Plex Mono',monospace;}
@@ -669,6 +669,33 @@ function renderAnexoSecao(secao){
   return h;
 }
 
+function renderAnexoTexto(textoLivre, rodape){
+  var linhas=textoLivre.split('\n');
+  var h='<div style="font-size:13px;line-height:1.8;color:var(--text);">';
+  var paraAtual='';
+  function flushPara(){
+    if(paraAtual.trim()) h+='<p style="margin:.5rem 0;text-align:justify;">'+paraAtual.trim()+'</p>';
+    paraAtual='';
+  }
+  linhas.forEach(function(l){
+    if(l.startsWith('## ')){
+      flushPara();
+      h+='<div style="font-weight:700;color:var(--navy);margin:1rem 0 .25rem;text-align:center;border-bottom:1px solid var(--bord);padding-bottom:3px;">'+l.slice(3).trim()+'</div>';
+    } else if(l.startsWith('> ')){
+      flushPara();
+      h+='<div style="margin:.35rem 0 .35rem 24px;text-align:justify;">'+l.slice(2).trim()+'</div>';
+    } else if(l.trim()===''){
+      flushPara();
+    } else {
+      paraAtual=paraAtual?paraAtual+' '+l.trim():l.trim();
+    }
+  });
+  flushPara();
+  h+='</div>';
+  if(rodape) h+='<div class="anexo-rodape">'+rodape+'</div>';
+  return h;
+}
+
 function renderAnexoCompleto(anx){
   var tipo=anx.tipo||'tabela';
   var h='<div><div class="doc-anexo-titulo">'+(anx.nome||'')+'</div>';
@@ -681,6 +708,8 @@ function renderAnexoCompleto(anx){
   } else if(tipo==='imagem'){
     if(anx.imgData) h+='<div style="text-align:center;margin:.75rem 0"><img src="'+anx.imgData+'" style="max-width:100%;border:1px solid var(--bord);border-radius:6px"></div>';
     if(anx.legenda) h+='<p style="text-align:center;font-size:12px;color:var(--muted);margin-top:.25rem">'+anx.legenda+'</p>';
+  } else if(tipo==='texto'){
+    h+=renderAnexoTexto(anx.textoLivre||'', anx.rodape||'');
   }
   h+='</div>';
   return h;
