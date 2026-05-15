@@ -760,6 +760,14 @@ function abrirNorma(id){
   if(l.preambulo) cabH+='<div class="doc-ementa-bloco"><div class="doc-ementa-txt">'+l.preambulo+'</div></div>';
   else cabH+='<div style="font-size:13px;color:var(--muted);font-style:italic;margin-bottom:1.2rem;text-align:center">'+esc(l.ementa)+'</div>';
   if(l.formulaPromulgacao) cabH+='<div class="doc-formula">'+l.formulaPromulgacao+'</div>';
+  // Leis modificadoras acumuladas
+  if(l.consolidadoCom && l.consolidadoCom.length){
+    var nomes = l.consolidadoCom.map(function(m){ return m.nome; }).join('; ');
+    var txt = l.consolidadoCom.length === 1
+      ? 'Texto consolidado com as alterações da ' + nomes
+      : 'Texto consolidado com as alterações das: ' + nomes;
+    cabH+='<div style="margin-top:.75rem"><span class="doc-lei-cons">'+txt+'</span></div>';
+  }
   cab.innerHTML=cabH;
   corp.appendChild(cab);
 
