@@ -271,9 +271,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 /* TABELAS ANEXOS */
 .anexo-table-wrap{overflow-x:auto;margin:.5rem 0;}
 .anexo-table{width:100%;border-collapse:collapse;font-size:12px;}
-.anexo-table th{background:var(--navy);color:#fff;padding:6px 10px;text-align:left;font-weight:600;font-size:11px;white-space:nowrap;}
-.anexo-table td{padding:5px 10px;border:1px solid var(--bord);color:var(--text);vertical-align:top;line-height:1.5;}
-.anexo-table tr:nth-child(even) td{background:var(--bg);}
+.anexo-table th{background:#fff;color:var(--text);padding:6px 10px;text-align:left;font-weight:600;font-size:11px;white-space:nowrap;border:1px solid var(--bord);}
+.anexo-table td{padding:5px 10px;border:1px solid var(--bord);color:var(--text);vertical-align:top;line-height:1.5;background:#fff;}
+.anexo-table tr:nth-child(even) td{background:#fff;}
 .cel-alt{background:rgba(30,95,168,.1)!important;position:relative;}
 .cel-ant{text-decoration:line-through;color:var(--muted);font-size:11px;display:block;}
 .cel-nov{color:var(--blue);font-weight:600;font-size:12px;}
@@ -450,7 +450,7 @@ function nomeCurto(l){var t={lc:'LC',lei:'Lei',dec:'Dec.',in:'IN',port:'Port.',r
 function filtrar(f,btn){filtroAtivo=f;document.querySelectorAll('.fb').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');buscaAtiva='';document.getElementById('q').value='';render();}
 function buscar(){buscaAtiva=document.getElementById('q').value.toLowerCase().trim();filtroAtivo='todos';document.querySelectorAll('.fb').forEach(function(b){b.classList.remove('on');});document.querySelector('.fb').classList.add('on');render();}
 function leiFiltrada(l){var tribs=['issqn','iptu','itbi','taxas'];if(tribs.indexOf(filtroAtivo)>=0){if(l.tributo!==filtroAtivo)return false;}else if(filtroAtivo==='in'){if(['in','port','res','ot','edital'].indexOf(l.tipo)<0)return false;}else if(filtroAtivo!=='todos'){if(l.tipo!==filtroAtivo)return false;}if(buscaAtiva){return (nomeCurto(l)+' '+l.ementa+' '+(l.tributo||'')).toLowerCase().indexOf(buscaAtiva)>=0;}return true;}
-function cardN(l){var t=l.artigos&&l.artigos.length,rev=l.situacao==='revogada',alt=l.situacao==='vigente-alt';return '<div class="cn'+(rev?' rev':'')+(t?'':' st')+'" onclick="abrirNorma('+l.id+')">'+'<div class="cn-top"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+tipoPill(l.tipo)+'<span class="cn-num">'+esc(nomeCurto(l))+'</span></div>'+'<div style="display:flex;gap:4px;flex-shrink:0">'+(alt?'<span class="b-alt">ALT</span>':'')+(rev?'<span class="b-rev">REV</span>':'')+'</div></div>'+'<div class="cn-em">'+esc(l.ementa.length>95?l.ementa.slice(0,95)+'...':l.ementa)+'</div>'+'<div class="cn-ft">'+(t?'📄 '+t+' dispositivos':'📋 sem texto')+(l.jom?'<span style="float:right;font-size:10px;color:var(--muted)">'+esc(l.jom)+'</span>':'')+'</div>'+(t?'<span class="cn-arrow">→</span>':'')+'</div>';}
+function cardN(l){var t=l.artigos&&l.artigos.length,rev=l.situacao==='revogada',alt=l.situacao==='vigente-alt';return '<div class="cn'+(rev?' rev':'')+(t?'':' st')+'" onclick="abrirNorma('+l.id+')">'+'<div class="cn-top"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+tipoPill(l.tipo)+'<span class="cn-num">'+esc(nomeCurto(l))+'</span></div>'+'<div style="display:flex;gap:4px;flex-shrink:0">'+(alt?'<span class="b-alt">ALT</span>':'')+(rev?'<span class="b-rev">REV</span>':'')+'</div></div>'+'<div class="cn-em">'+esc(l.ementa.length>95?l.ementa.slice(0,95)+'...':l.ementa)+'</div>'+'<div class="cn-ft">'+(t?'📄 '+t+' dispositivos':'📋 sem texto')+'</div>'+'</div>';}
 function cardMod(l){return '<div class="cm" onclick="abrirNorma('+l.id+')" title="'+esc(l.ementa)+'"><div style="display:flex;align-items:center;gap:6px">'+tipoPill(l.tipo)+'<span class="cm-num">'+esc(nomeCurto(l))+'</span></div><div class="cm-em">'+esc(l.ementa.slice(0,65))+(l.ementa.length>65?'...':'')+'</div></div>';}
 function cardCons(c){return '<div class="cc" onclick="abrirCons('+c.id+')"><div class="cc-tipo">TEXTO CONSOLIDADO</div><div class="cc-titulo">'+esc(c.leiBaseNome)+'</div><div class="cc-sub">Com alterações da '+esc(c.leiModNome)+' · '+esc(c.data)+'</div><span class="cc-badge">📑 '+c.nalts+' modificações — clique para ler →</span></div>';}
 
