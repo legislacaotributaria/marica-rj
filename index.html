@@ -464,7 +464,16 @@ function cardN(l){var t=l.artigos&&l.artigos.length,rev=l.situacao==='revogada',
   return partes.join(' · ');
 })()+'</div>'+'</div>';}
 function cardMod(l){return '<div class="cm" onclick="abrirNorma('+l.id+')" title="'+esc(l.ementa)+'"><div style="display:flex;align-items:center;gap:6px">'+tipoPill(l.tipo)+'<span class="cm-num">'+esc(nomeCurto(l))+'</span></div><div class="cm-em">'+esc(l.ementa.slice(0,65))+(l.ementa.length>65?'...':'')+'</div></div>';}
-function cardCons(c){return '<div class="cc" onclick="abrirCons('+c.id+')"><div class="cc-tipo">TEXTO CONSOLIDADO</div><div class="cc-titulo">'+esc(c.leiBaseNome)+'</div><div class="cc-sub">Com alterações da '+esc(c.leiModNome)+' · '+esc(c.data)+'</div><span class="cc-badge">📑 '+c.nalts+' modificações — clique para ler →</span></div>';}
+function cardCons(c){
+  // Reunir todas as consolidações da mesma lei base
+  var todasCons = cons.filter(function(x){ return x.leiBaseId === c.leiBaseId; })
+    .sort(function(a,b){ return b.id - a.id; }); // mais recente primeiro
+  var totalAlts = todasCons.reduce(function(s,x){ return s + (x.nalts||0); }, 0);
+  var subLines = todasCons.map(function(x){
+    return 'Com alterações da '+esc(x.leiModNome);
+  }).join('<br>');
+  return '<div class="cc" onclick="abrirCons('+c.id+')"><div class="cc-tipo">TEXTO CONSOLIDADO</div><div class="cc-titulo">'+esc(c.leiBaseNome)+'</div><div class="cc-sub">'+subLines+'</div><span class="cc-badge">📑 '+totalAlts+' modificações — clique para ler →</span></div>';
+}
 
 
 function renderStats(){
@@ -797,7 +806,7 @@ var SEP='\u241e__CITACAO__\u241e';
 if(txtRaw.indexOf(SEP)!==-1){
   var parts=txtRaw.split(SEP);
   var intro=esc(parts[0].trim());
-  var bqStyle='display:block;margin:6px 0 4px 0;padding:10px 16px;border-left:3px solid var(--muted);background:var(--bg);border-radius:0 4px 4px 0;font-family:monospace;font-size:13px;color:var(--text);line-height:1.9;white-space:pre;letter-spacing:.01em;';
+  var bqStyle='display:block;margin:6px 0 4px 0;padding:6px 12px;border-left:3px solid var(--muted);background:var(--light);border-radius:0 4px 4px 0;font-family:monospace;font-size:12px;color:var(--muted);font-style:italic;line-height:1.6;white-space:pre-wrap;text-align:justify;';
   var blocos='';
   for(var pi=1;pi<parts.length;pi++){var blk=parts[pi].trim();if(blk)blocos+='<blockquote style="'+bqStyle+'">'+esc(blk)+'</blockquote>';}
   rowHtml='<span class="doc-art-num" style="'+bold+'">'+esc(d.label)+'</span>'
@@ -823,14 +832,7 @@ function abrirNorma(id){
   if(l.preambulo) cabH+='<div class="doc-ementa-bloco"><div class="doc-ementa-txt">'+l.preambulo+'</div></div>';
   else cabH+='<div style="font-size:13px;color:var(--muted);font-style:italic;margin-bottom:1.2rem;text-align:center">'+esc(l.ementa)+'</div>';
   if(l.formulaPromulgacao) cabH+='<div class="doc-formula">'+l.formulaPromulgacao+'</div>';
-  // Leis modificadoras acumuladas
-  if(l.consolidadoCom && l.consolidadoCom.length){
-    var nomes = l.consolidadoCom.map(function(m){ return m.nome; }).join('; ');
-    var txt = l.consolidadoCom.length === 1
-      ? 'Texto consolidado com as alterações da ' + nomes
-      : 'Texto consolidado com as alterações das: ' + nomes;
-    cabH+='<div style="margin-top:.75rem"><span class="doc-lei-cons">'+txt+'</span></div>';
-  }
+  // consolidadoCom não aparece aqui — aparece no texto consolidado (abrirCons)
   cab.innerHTML=cabH;
   corp.appendChild(cab);
 
@@ -852,7 +854,7 @@ function abrirNorma(id){
     if(l.fechoTexto){
       fecho.innerHTML+='<div class="doc-fecho-local">'+l.fechoTexto+'</div>';
     } else if(l.dataExtenso){
-      fecho.innerHTML+='<div class="doc-fecho-local">GABINETE DO PREFEITO DO MUNICÍPIO DE MARICÁ, '+loc+', '+l.dataExtenso+'.</div>';
+      fecho.innerHTML+='<div class="doc-fecho-local">GABINETE DO PREFEITO DO MUNICÍPIO DE MARICÁ, '+l.dataExtenso+'.</div>';
     }
     if(l.assinatura) fecho.innerHTML+='<div class="doc-fecho-assinatura">'+l.assinatura+'</div>';
     corp.appendChild(fecho);
@@ -896,7 +898,12 @@ function renderAnexosConsolidado(cont, modNome){
   var histUid=0;
   anx.forEach(function(anexo){
     var div=document.createElement('div');
-    div.innerHTML='<div class="doc-anexo-titulo">'+anexo.nome.toUpperCase()+'</div><div class="doc-anexo-desc">'+anexo.descricao+'</div>';
+    var tipoAnxPre = anexo.tipo||'tabela';
+    // Só pré-adicionar título quando NÃO usar renderAnexoCompleto (que já gera o título)
+    var usarCompleto = (tipoAnxPre!=='tabela') || !(celMap[anexo.id] && Object.keys(celMap[anexo.id]||{}).length);
+    if(!usarCompleto || subMap[anexo.id]){
+      div.innerHTML='<div class="doc-anexo-titulo">'+anexo.nome.toUpperCase()+'</div><div class="doc-anexo-desc">'+anexo.descricao+'</div>';
+    }
     if(subMap[anexo.id]){
       var s=subMap[anexo.id];
       // Nova redação (vigente)
@@ -914,9 +921,15 @@ function renderAnexosConsolidado(cont, modNome){
         +'</div>';
     } else {
       var cels=celMap[anexo.id]||{};
-      div.innerHTML+=renderTabela(anexo,cels);
-      if(Object.keys(cels).length){
+      // Usar renderAnexoCompleto para suportar todos os tipos (tabela, secoes, texto, imagem)
+      var tipoAnx = anexo.tipo||'tabela';
+      if(tipoAnx==='tabela' && Object.keys(cels).length){
+        // Tabela com células alteradas — usar renderTabela com celMap
+        div.innerHTML+=renderTabela(anexo,cels);
         div.innerHTML+='<p style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">(Células em azul alteradas pela '+modNome+')</p>';
+      } else {
+        // Demais tipos — renderAnexoCompleto trata tabela, secoes, texto e imagem
+        div.innerHTML+=renderAnexoCompleto(anexo);
       }
     }
     cont.appendChild(div);
@@ -932,87 +945,125 @@ function toggleAnexoHist(uid){
 var S={leiBaseId:null,leiModId:null,artigos:[],alteracoes:[],anexos:[]};
 var IND_PX={titulo:0,capitulo:0,secao:0,art:0,par:0,inc:20,ali:40,ite:60};
 var ESTRUTURA=new Set(['titulo','capitulo','secao']);
-function renderHierDoc(d, todos, altMap, modNome, container){
-  var tp = d.tipo||'art';
-  var ml = IND_PX[tp]||0;
+// Processa citações no texto (marcador ␞__CITACAO__␞)
+function _htmlTextoComCitacao(txtRaw, styleTexto){
+  if(!txtRaw) return '<span style="'+styleTexto+'"></span>';
+  var SEP='\u241e__CITACAO__\u241e';
+  var bqSt='display:block;margin:6px 0 4px 0;padding:6px 12px;border-left:3px solid var(--muted);background:var(--light);border-radius:0 4px 4px 0;font-family:monospace;font-size:12px;color:var(--muted);font-style:italic;line-height:1.6;white-space:pre-wrap;text-align:justify;';
+  if(txtRaw.indexOf(SEP)===-1) return '<span style="'+styleTexto+'">'+esc(txtRaw)+'</span>';
+  var parts=txtRaw.split(SEP);
+  var html='<span style="'+styleTexto+'">'+esc(parts[0])+'</span>';
+  for(var i=1;i<parts.length;i++){
+    if(parts[i].trim()) html+='<blockquote style="'+bqSt+'">'+esc(parts[i])+'</blockquote>';
+  }
+  return html;
+}
 
-  // Separadores estruturais (título, capítulo, seção)
-  if(ESTRUTURA.has(tp)){
+function renderHierDoc(d, todos, altMap, modNome, container){
+  var ESTR = {titulo:1,capitulo:1,secao:1,subsecao:1};
+  var IND  = {art:0,par:24,inc:48,ali:64,ite:80};
+  var tp   = d.tipo||'art';
+
+  if(ESTR[tp]){
     var div=document.createElement('div');
-    div.className='doc-est-'+tp;
-    var up=tp!=='secao';
+    div.style.cssText='text-align:center;font-weight:700;font-family:monospace;font-size:13px;margin:1rem 0 .25rem;color:var(--navy)';
+    var up=(tp==='titulo'||tp==='capitulo');
     var ementa=(d.texto&&d.texto.trim()&&d.texto.trim()!==d.label.trim())?d.texto.trim():'';
     div.innerHTML='<div class="doc-est-label">'+(up?d.label.toUpperCase():d.label)+'</div>'
                  +(ementa?'<div class="doc-est-nome">'+(up?ementa.toUpperCase():ementa)+'</div>':'');
     container.appendChild(div);
-    todos.filter(function(x){return x.paiId===d.id;}).forEach(function(f){return renderHierDoc(f,todos,altMap,modNome,container)});
+    var filhos=todos.filter(function(x){return x.paiId===d.id;});
+    filhos.forEach(function(f){renderHierDoc(f,todos,altMap,modNome,container);});
     return;
   }
 
-  var dPath = d._path||d.label;
-  function normPath(s){ 
-    if(!s) return ''; 
-    return s.toLowerCase()
-            .replace(/[º°]/g,'')
-            .replace(/§\s+/g,'§')
-            .replace(/art\.\s*/g,'art')
-            .replace(/\s*–\s*/g,'–')
-            .replace(/\s+/g,'')
-            .trim(); 
-  }
-  var dNorm = normPath(dPath);
-  var alt = S.alteracoes.find(function(a){return normPath(a.disp) === dNorm;});
-  var dash = (tp==='inc'||tp==='ali'||tp==='ite') ? ' – ' : '  ';
-  var bold = (tp==='art'||tp==='par') ? 'font-weight:700;' : '';
+  var ml = IND[tp]||0;
+  var bold=(tp==='art'||tp==='par')?'font-weight:700;':'';
+  var dash=(tp==='inc'||tp==='ali'||tp==='ite')?' – ':'  ';
 
-  var wrapper = document.createElement('div');
-  wrapper.style.marginLeft = ml+'px';
-  wrapper.style.marginBottom = '.25rem';
-  wrapper.style.lineHeight = '1.75';
+  // Normalizar path para busca no altMap
+  var dPath = d._path||d.label||'';
+  var dNorm = dPath.toLowerCase().replace(/[ºo°]/g,'').replace(/§\s+/g,'§')
+    .replace(/art\.\s*/g,'art').replace(/\s*[–-]\s*/g,'–').replace(/\s+/g,'').trim();
+
+  // Buscar no altMap (tem autorNome por lei)
+  var alt = null;
+  if(altMap){
+    var _e = altMap[dPath]||altMap[dNorm]||altMap[d.label]||null;
+    if(!_e && d._path){
+      var _pp=d._path.split(' – ').slice(0,-1).join(' – ');
+      _e=altMap[_pp+'__'+d.label]||null;
+    }
+    alt = _e||null;
+  }
+  // Fallback S.alteracoes
+  if(!alt && typeof S!=='undefined' && S.alteracoes){
+    alt=S.alteracoes.find(function(a){
+      return (a.disp||'').toLowerCase().replace(/[ºo°]/g,'').replace(/§\s+/g,'§')
+        .replace(/art\.\s*/g,'art').replace(/\s*[–-]\s*/g,'–').replace(/\s+/g,'').trim()===dNorm;
+    })||null;
+  }
+
+  var wrapper=document.createElement('div');
+  wrapper.style.marginLeft=ml+'px';
+  wrapper.style.marginBottom='6px';
+  wrapper.style.lineHeight='1.75';
 
   if(!alt){
-    // sem modificação — linha normal
-    wrapper.innerHTML='<span style="font-family:monospace;font-size:13px;'+bold+'color:var(--navy)">'+d.label+dash+'</span>'
-                     +'<span style="font-family:monospace;font-size:13px;color:var(--text)">'+d.texto+'</span>';
+    wrapper.innerHTML='<span style="font-family:monospace;font-size:13px;'+bold+'color:var(--navy)">'+esc(d.label)+dash+'</span>'
+                     +_htmlTextoComCitacao(d.texto||'','font-family:monospace;font-size:13px;color:var(--text)');
   } else {
-    // com modificação — bloco colorido
-    var cores={alterado:'var(--blue)',revogado:'var(--red)',incluido:'var(--green)'};
-    var bgCor={alterado:'rgba(30,95,168,.06)',revogado:'rgba(139,26,26,.06)',incluido:'rgba(21,95,59,.06)'};
+    var _autor=(alt.autorNome&&alt.autorNome!==modNome)?alt.autorNome:modNome;
+    var nota={
+      alterado:'(Redação dada pela '+_autor+')',
+      revogado:'(Revogado pela '+_autor+')',
+      incluido:'(Incluído pela '+_autor+')'
+    };
+    var bgCor={alterado:'rgba(30,95,168,.04)',revogado:'rgba(139,26,26,.04)',incluido:'rgba(21,128,61,.04)'};
     var bdCor={alterado:'var(--blue)',revogado:'var(--red)',incluido:'var(--green)'};
-    var nota={alterado:'(Redação dada pela '+modNome+')',revogado:'(Revogado pela '+modNome+')',incluido:'(Incluído pela '+modNome+')'};
-    wrapper.style.background=bgCor[alt.tipo];
-    wrapper.style.borderLeft='3px solid '+bdCor[alt.tipo];
+    wrapper.style.background=bgCor[alt.tipo]||'';
+    wrapper.style.borderLeft='3px solid '+(bdCor[alt.tipo]||'var(--muted)');
     wrapper.style.padding='7px 12px';
     wrapper.style.borderRadius='0 6px 6px 0';
-    wrapper.style.marginBottom='.625rem';
+    wrapper.style.marginBottom='6px';
 
     var inner='';
-
-    if(alt.tipo==='incluido'){
-      inner='<span style="font-family:monospace;font-size:13px;'+bold+'color:var(--green)">'+d.label+dash+'</span>'
-           +'<span style="font-size:13px;font-family:monospace;color:var(--text)">'+(alt.texto||d.texto)+'</span>'
-           +'<br><span class="doc-art-nota">'+nota.incluido+'</span>';
-    } else if(alt.tipo==='revogado'){
-      inner='<span style="font-family:monospace;font-size:13px;'+bold+'color:var(--red)">'+d.label+dash+'</span>'
-           +'<span style="font-size:13px;font-family:monospace;color:var(--red);text-decoration:line-through">'+d.texto+'</span>'
-           +'<br><span class="doc-art-nota">'+nota.revogado+'</span>';
-    } else {
+    if(alt.tipo==='revogado'){
       inner='<div style="font-size:13px;font-family:monospace;">'
-           +'<span style="'+bold+'color:var(--blue)">'+d.label+dash+'</span>'
-           +'<span style="color:var(--muted);text-decoration:line-through">'+(alt.textoAnt||d.texto)+'</span>'
+           +'<span style="'+bold+'color:var(--red)">'+esc(d.label)+dash+'</span>'
+           +'<span style="color:var(--muted);font-size:13px;font-family:monospace;text-decoration:line-through">'
+           +_htmlTextoComCitacao(d.texto||'','')
+           +'</span>'
+           +'<br><span class="doc-art-nota">'+nota.revogado+'</span>'
+           +'</div>';
+    } else if(alt.tipo==='incluido'){
+      inner='<div style="font-size:13px;font-family:monospace;">'
+           +'<span style="'+bold+'color:var(--green)">'+esc(d.label)+dash+'</span>'
+           +_htmlTextoComCitacao(alt.texto||'','color:var(--green)')
+           +'<br><span class="doc-art-nota">'+nota.incluido+'</span>'
+           +'</div>';
+    } else {
+      inner='<div style="font-size:13px;font-family:monospace;margin-bottom:4px">'
+           +'<span style="'+bold+'color:var(--muted)">'+esc(d.label)+dash+'</span>'
+           +'<span style="color:var(--muted);text-decoration:line-through">'
+           +_htmlTextoComCitacao(alt.textoAnt||d.texto||'','')
+           +'</span>'
            +'</div>'
-           +'<div style="font-size:13px;font-family:monospace;margin-top:3px">'
-           +'<span style="'+bold+'color:var(--blue)">'+d.label+dash+'</span>'
-           +'<span style="color:var(--text)">'+alt.texto+'</span>'
+           +'<div style="font-size:13px;font-family:monospace;">'
+           +'<span style="'+bold+'color:var(--blue)">'+esc(d.label)+dash+'</span>'
+           +_htmlTextoComCitacao(alt.texto||'','color:var(--text)')
            +'<br><span class="doc-art-nota">'+nota.alterado+'</span>'
            +'</div>';
     }
     wrapper.innerHTML=inner;
   }
-
   container.appendChild(wrapper);
-  todos.filter(function(x){return x.paiId===d.id;}).forEach(function(f){return renderHierDoc(f,todos,altMap,modNome,container)});
+
+  var filhos=todos.filter(function(x){return x.paiId===d.id;});
+  filhos.forEach(function(f){renderHierDoc(f,todos,altMap,modNome,container);});
 }
+
+
 function abrirCons(id){
   // Compara id como número e como string para segurança
   var c = cons.find(function(x){ return x.id===id || x.id===Number(id) || String(x.id)===String(id); });
@@ -1022,29 +1073,7 @@ function abrirCons(id){
   corp.innerHTML = '';
 
   // Se tem HTML pré-renderizado salvo, usa diretamente (mais rápido e confiável)
-  if(c.html){
-    corp.innerHTML = c.html;
-    // Injeta link clicável para a lei modificadora no cabeçalho
-    var lMod2 = leis.find(function(l){ return l.id===c.leiModId; });
-    if(lMod2){
-      var cabecalho = corp.querySelector('.doc-cabecalho');
-      if(cabecalho){
-        var badge = cabecalho.querySelector('.doc-lei-cons');
-        if(badge && badge.parentNode) badge.parentNode.removeChild(badge);
-        var linkDiv = document.createElement('div');
-        linkDiv.style.marginTop = '.75rem';
-        var linkSpan = document.createElement('span');
-        linkSpan.className = 'doc-lei-cons-link';
-        linkSpan.title = 'Abrir ' + leiNomeC(lMod2);
-        linkSpan.innerHTML = '&#x1F4CE; Texto consolidado com as altera\u00e7\u00f5es da ' + leiNomeC(lMod2);
-        linkSpan.onclick = function(){ fechar(); setTimeout(function(){ abrirNorma(lMod2.id); }, 80); };
-        linkDiv.appendChild(linkSpan);
-        cabecalho.appendChild(linkDiv);
-      }
-    }
-    abrir('Texto Consolidado \u2014 ' + c.leiBaseNome);
-    return;
-  }
+  // HTML pré-renderizado ignorado — sempre re-renderiza para garantir autoria correta por lei
 
   // Caso contrário, renderiza do zero
   var lBase = leis.find(function(l){ return l.id===c.leiBaseId; });
@@ -1065,21 +1094,39 @@ function abrirCons(id){
   if(lBase.preambulo) cabH += '<div class="doc-ementa-bloco"><div class="doc-ementa-txt">'+lBase.preambulo+'</div></div>';
   if(lBase.formulaPromulgacao) cabH += '<div class="doc-formula">'+lBase.formulaPromulgacao+'</div>';
   // Acumular todas as leis modificadoras desta lei base
-  var _consBase = cons.filter(function(x){ return x.leiBaseId === lBase.id; });
-  var _modsNomes = _consBase.map(function(x){
-    var lm = leis.find(function(l){ return l.id === x.leiModId; });
-    return lm ? leiNomeC(lm) : x.leiModNome;
+  // Links das leis modificadoras — da mais nova para a mais antiga
+  var _consBase = cons.filter(function(x){ return x.leiBaseId === lBase.id; })
+    .sort(function(a,b){ return b.id - a.id; }); // mais recente primeiro
+  var _linksDiv = '<div style="margin-top:.75rem">';
+  _consBase.forEach(function(cb){
+    var lm = leis.find(function(l){ return l.id === cb.leiModId; });
+    var nmMod = lm ? leiNomeC(lm) : cb.leiModNome;
+    if(lm){
+      _linksDiv += '<div style="margin-bottom:3px"><span class="doc-lei-cons-link" onclick="fechar();setTimeout(function(){abrirNorma('+lm.id+')},80)" title="Abrir '+nmMod+'">📎 Texto consolidado com as alterações da '+nmMod+'</span></div>';
+    } else {
+      _linksDiv += '<div style="margin-bottom:3px"><span class="doc-lei-cons">📎 Texto consolidado com as alterações da '+nmMod+'</span></div>';
+    }
   });
-  var _txtMods = _modsNomes.length === 1
-    ? '📎 Texto consolidado com as alterações da ' + _modsNomes[0]
-    : '📎 Texto consolidado com as alterações das: ' + _modsNomes.join('; ');
-  cabH += '<div style="margin-top:.75rem"><span class="doc-lei-cons">' + _txtMods + '</span></div>';
+  _linksDiv += '</div>';
+  cabH += _linksDiv;
   cab.innerHTML = cabH;
   corp.appendChild(cab);
 
   var modNome = leiNomeC(lMod);
+  // altMap combinado: todas as consolidações da lei base, da mais antiga para a mais recente
   var altMap = {};
-  S.alteracoes.forEach(function(a){ altMap[a.disp]=a; if(a.apos) altMap[a.apos+'__'+a.disp]=a; });
+  var _consOrdem = cons.filter(function(x){ return x.leiBaseId === c.leiBaseId; })
+    .sort(function(a,b){ return a.id - b.id; });
+  _consOrdem.forEach(function(cb){
+    var lmCb = leis.find(function(l){ return l.id === cb.leiModId; });
+    var nmCb = lmCb ? leiNomeC(lmCb) : cb.leiModNome;
+    (cb.alteracoes||[]).forEach(function(a){
+      var entrada = JSON.parse(JSON.stringify(a));
+      entrada.autorNome = nmCb;
+      altMap[a.disp] = entrada;
+      if(a.apos) altMap[a.apos+'__'+a.disp] = entrada;
+    });
+  });
 
   var todosDisps = JSON.parse(JSON.stringify(S.artigos));
   computePaths(todosDisps);
@@ -1117,11 +1164,10 @@ function abrirCons(id){
   corp.appendChild(cont2);
 
   // Fecho ANTES dos anexos
-  if(lBase.dataExtenso||lBase.assinatura){
+  if(lBase.fechoTexto||lBase.dataExtenso||lBase.assinatura){
     var fecho=document.createElement('div'); fecho.className='doc-fecho';
-    var loc=lBase.municipio||'Maricá, Estado do Rio de Janeiro, RJ';
     if(lBase.fechoTexto) fecho.innerHTML+='<div class="doc-fecho-local">'+lBase.fechoTexto+'</div>';
-    else if(lBase.dataExtenso) fecho.innerHTML+='<div class="doc-fecho-local">GABINETE DO PREFEITO DO MUNICÍPIO DE MARICÁ, '+loc+', '+lBase.dataExtenso+'.</div>';
+    else if(lBase.dataExtenso) fecho.innerHTML+='<div class="doc-fecho-local">GABINETE DO PREFEITO DO MUNICÍPIO DE MARICÁ, '+lBase.dataExtenso+'.</div>';
     if(lBase.assinatura) fecho.innerHTML+='<div class="doc-fecho-assinatura">'+lBase.assinatura+'</div>';
     corp.appendChild(fecho);
   }
