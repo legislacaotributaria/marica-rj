@@ -503,7 +503,14 @@ function render(){
     return;
   }
   var h='';
-  if(cons.length) h+='<div class="sec" id="sec-cons"><div class="sec-hdr"><span class="sec-titulo">&#x1F4D1; Textos Consolidados</span><span class="sec-n">'+cons.length+'</span></div><div class="grid">'+cons.map(cardCons).join('')+'</div></div>';
+  // Mostrar só a consolidação mais recente por lei base
+  var consRecentes = [];
+  cons.forEach(function(c){
+    var idx2 = consRecentes.findIndex(function(x){ return x.leiBaseId === c.leiBaseId; });
+    if(idx2 < 0) consRecentes.push(c);
+    else if(c.id > consRecentes[idx2].id) consRecentes[idx2] = c;
+  });
+  if(consRecentes.length) h+='<div class="sec" id="sec-cons"><div class="sec-hdr"><span class="sec-titulo">&#x1F4D1; Textos Consolidados</span><span class="sec-n">'+consRecentes.length+'</span></div><div class="grid">'+consRecentes.map(cardCons).join('')+'</div></div>';
   var ctm=leis.filter(function(l){return l.tipo==='lc'&&String(l.num)==='005';});
   var _lcModIds=[5,3,2,2443,2444,2445,2446,2447,2448,2449,2450,2451,2452,2453,2454,2455,2456,2457,2458];var lcMod=leis.filter(function(l){return _lcModIds.indexOf(l.id)!==-1;});
   if(ctm.length||lcMod.length){
@@ -790,7 +797,7 @@ var SEP='\u241e__CITACAO__\u241e';
 if(txtRaw.indexOf(SEP)!==-1){
   var parts=txtRaw.split(SEP);
   var intro=esc(parts[0].trim());
-  var bqStyle='display:block;margin:6px 0 4px 0;padding:8px 14px;border-left:3px solid var(--blue,#1e5fa8);background:rgba(30,95,168,0.05);border-radius:0 4px 4px 0;font-family:monospace;font-size:12px;color:var(--text);line-height:1.7;white-space:pre-wrap;';
+  var bqStyle='display:block;margin:6px 0 4px 0;padding:10px 16px;border-left:3px solid var(--muted);background:var(--bg);border-radius:0 4px 4px 0;font-family:monospace;font-size:13px;color:var(--text);line-height:1.9;white-space:pre;letter-spacing:.01em;';
   var blocos='';
   for(var pi=1;pi<parts.length;pi++){var blk=parts[pi].trim();if(blk)blocos+='<blockquote style="'+bqStyle+'">'+esc(blk)+'</blockquote>';}
   rowHtml='<span class="doc-art-num" style="'+bold+'">'+esc(d.label)+'</span>'
@@ -1057,7 +1064,16 @@ function abrirCons(id){
   var cabH = '<div class="doc-lei-id">'+tf+' Nº '+lBase.num+', DE '+(lBase.dataExtenso||lBase.ano)+'</div>';
   if(lBase.preambulo) cabH += '<div class="doc-ementa-bloco"><div class="doc-ementa-txt">'+lBase.preambulo+'</div></div>';
   if(lBase.formulaPromulgacao) cabH += '<div class="doc-formula">'+lBase.formulaPromulgacao+'</div>';
-  cabH += '<div style="margin-top:.75rem"><span class="doc-lei-cons-link" onclick="fechar();setTimeout(function(){abrirNorma('+lMod.id+')},80)" title="Abrir '+leiNomeC(lMod)+'">📎 Texto consolidado com as alterações da '+leiNomeC(lMod)+'</span></div>';
+  // Acumular todas as leis modificadoras desta lei base
+  var _consBase = cons.filter(function(x){ return x.leiBaseId === lBase.id; });
+  var _modsNomes = _consBase.map(function(x){
+    var lm = leis.find(function(l){ return l.id === x.leiModId; });
+    return lm ? leiNomeC(lm) : x.leiModNome;
+  });
+  var _txtMods = _modsNomes.length === 1
+    ? '📎 Texto consolidado com as alterações da ' + _modsNomes[0]
+    : '📎 Texto consolidado com as alterações das: ' + _modsNomes.join('; ');
+  cabH += '<div style="margin-top:.75rem"><span class="doc-lei-cons">' + _txtMods + '</span></div>';
   cab.innerHTML = cabH;
   corp.appendChild(cab);
 
@@ -1099,15 +1115,18 @@ function abrirCons(id){
   var cont2 = document.createElement('div');
   todosDisps.filter(function(d){return !d.paiId;}).forEach(function(d){renderHierDoc(d,todosDisps,altMap,modNome,cont2);});
   corp.appendChild(cont2);
-  renderAnexosConsolidado(corp,modNome);
 
+  // Fecho ANTES dos anexos
   if(lBase.dataExtenso||lBase.assinatura){
     var fecho=document.createElement('div'); fecho.className='doc-fecho';
     var loc=lBase.municipio||'Maricá, Estado do Rio de Janeiro, RJ';
-    if(lBase.dataExtenso) fecho.innerHTML+='<div class="doc-fecho-local">GABINETE DO PREFEITO DO MUNICÍPIO DE MARICÁ, '+loc+', '+lBase.dataExtenso+'.</div>';
+    if(lBase.fechoTexto) fecho.innerHTML+='<div class="doc-fecho-local">'+lBase.fechoTexto+'</div>';
+    else if(lBase.dataExtenso) fecho.innerHTML+='<div class="doc-fecho-local">GABINETE DO PREFEITO DO MUNICÍPIO DE MARICÁ, '+loc+', '+lBase.dataExtenso+'.</div>';
     if(lBase.assinatura) fecho.innerHTML+='<div class="doc-fecho-assinatura">'+lBase.assinatura+'</div>';
     corp.appendChild(fecho);
   }
+
+  renderAnexosConsolidado(corp,modNome);
   abrir('Texto Consolidado — '+c.leiBaseNome);
 }
 
