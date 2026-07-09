@@ -90926,7 +90926,7 @@ const leiNomeC  = l => ''+(tipoLabel(l.tipo))+' nº '+(l.num)+'/'+(l.ano)+'';
 const tribLabel = t => ({issqn:'ISSQN',iptu:'IPTU',itbi:'ITBI',taxas:'Taxas',cosip:'COSIP',geral:'Geral'}[t]||t);
 function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):''; }
 var _REFIS_IDS=[33,49,52,5329];
-function nomeCurto(l){var t={lc:'LC',lei:'Lei',dec:'Dec.',in:'IN',port:'Port.',res:'Res.',ot:'OT',edital:'Edital'};return (t[l.tipo]||l.tipo.toUpperCase())+' '+l.num+'/'+l.ano;}
+function nomeCurto(l){var t={lc:'Lei Complementar',lei:'Lei',dec:'Decreto',in:'Instrução Normativa',port:'Portaria',res:'Resolução',ot:'Orientação Técnica',edital:'Edital'};return (t[l.tipo]||l.tipo.toUpperCase())+' '+l.num+'/'+l.ano;}
 function cardN(l){
   var arts=l.artigos||[];
   var t=arts.length>0; // tem conteúdo (qualquer tipo: art, secao-corrido, etc.)
@@ -91211,10 +91211,11 @@ function render(){
   var cont=document.getElementById('cont');
   if(visBusca){
     var lista=leis.filter(leiFiltrada);
-    // Para o filtro de consolidados, usar cardLeiOuCons para mostrar os cards azuis (.cc)
-    var fnCard = filtroAtivo==='__cons__' ? cardLeiOuCons : cardN;
+    // Sempre usar cardLeiOuCons: se a lei tiver texto consolidado, aparece como
+    // card azul (cardCons) mesmo na busca — evita que a pessoa veja a lei
+    // original quando existe uma versão consolidada mais atualizada.
     cont.innerHTML=lista.length
-      ?'<p style="font-size:12px;color:var(--muted);margin-bottom:12px">'+lista.length+' resultado(s)</p><div class="grid">'+lista.map(fnCard).join('')+'</div>'
+      ?'<p style="font-size:12px;color:var(--muted);margin-bottom:12px">'+lista.length+' resultado(s)</p><div class="grid">'+lista.map(cardLeiOuCons).join('')+'</div>'
       :'<div class="empty"><div class="empty-ico">&#x1F50D;</div><p>Nenhuma norma encontrada.</p></div>';
     return;
   }
@@ -91267,6 +91268,11 @@ function render(){
     { id:'cosip', e:'&#x1F4A1;',n:'COSIP', extras:[] },
   ];
 
+  // Ordem de exibição dentro de cada seção: LC > Lei > Decreto > IN > Resolução > OT > Portaria
+  // Dentro do mesmo tipo: ano decrescente (mais recente primeiro), depois número decrescente
+  var _TIPO_ORD={lc:1,lei:2,dec:3,in:4,res:5,ot:6,port:7};
+  function _numVal(num){ var m=(num||'').match(/\d+/g); return m?parseInt(m[m.length-1]):0; }
+
   var tCorpo='';
   tribsDef.forEach(function(t){
     var extSet = new Set(t.extras||[]);
@@ -91277,6 +91283,14 @@ function render(){
       if(_editaisIptuSet.has(l.id)) return false;
       if(_codIdsSet.has(l.id)) return false;
       return l.tributo===t.id || extSet.has(l.id);
+    });
+    // Ordenar: tipo (LC→Lei→Dec→IN→Res→OT→Port), depois ano ↓, depois número ↓
+    g.sort(function(a,b){
+      var oa=_TIPO_ORD[a.tipo]||99, ob=_TIPO_ORD[b.tipo]||99;
+      if(oa!==ob) return oa-ob;
+      var ya=parseInt(a.ano)||0, yb=parseInt(b.ano)||0;
+      if(ya!==yb) return yb-ya;
+      return _numVal(b.num)-_numVal(a.num);
     });
 
     // Editais de IPTU (dropdown especializado dentro da subsec)
