@@ -92211,7 +92211,7 @@ function render(){
     { titulo:'Cobrança de Créditos Tributários e Não Tributários', ids:[35,16,9147,8222,24] },
     { titulo:'Extinção de Créditos Tributários e Não Tributários', ids:[8,32,29] },
     { titulo:'Parcelamento', ids:[2,18] },
-    { titulo:'Pagamento', ids:[37,31] }, // Dec 173 vai no CATRIMA; Port 31 = prorr. parcelamentos
+    { titulo:'Pagamento', ids:[37] }, // Dec 173 vai no CATRIMA; Port 31 vai em Exauradas/Prorrogação
     { titulo:'Estrutura e Governança', ids:[36,11,10] },
     { titulo:'Comitês e Grupos Especiais', ids:[17,50,55,4185] }
   ];
@@ -92270,11 +92270,42 @@ function render(){
   });
   if(admCorpo) h += '<div class="sec" id="sec-adm"><div class="sec-hdr"><span class="sec-titulo">&#x1F3DB; IV &mdash; Normas Gerais de Administração Tributária</span></div>' + admCorpo + '</div>';
 
-  // Normas com Eficácia Exaurida ──
+  // ── Normas com Eficácia Exaurida ── organizado em sub-grupos ────────────
   // Exclui editais de IPTU e portarias/decretos CATRIMA (já visíveis nos dropdowns)
   var _exauExcludeSet = new Set([..._editaisIptuSet, ..._catrimaPortSet]);
-  var exauridas=leis.filter(function(l){ return l.situacao==='exaurida' && !_exauExcludeSet.has(l.id); });
-  if(exauridas.length) h+='<div class="sec" id="sec-exaurida"><div class="sec-hdr"><span class="sec-titulo">&#x1F4E6; Normas com Eficácia Exaurida</span><span class="sec-n">'+exauridas.length+'</span></div><div class="grid">'+exauridas.map(cardLeiOuCons).join('')+'</div></div>';
+
+  var exauridas = leis.filter(function(l){ return l.situacao==='exaurida' && !_exauExcludeSet.has(l.id); });
+  if(exauridas.length){
+    // Sub-grupos das normas exauradas
+    var _exauRefisSet   = new Set(_REFIS_IDS);                         // REFIS
+    var _exauProrrogSet = new Set([31]);                               // Prorrogações de prazo
+    // Ordenação interna: tipo (LC→Lei→Dec→Port) e ano ↓
+    function _sortExau(arr){ return arr.slice().sort(function(a,b){
+      var oa=_TIPO_ORD[a.tipo]||99, ob=_TIPO_ORD[b.tipo]||99;
+      if(oa!==ob) return oa-ob;
+      return (parseInt(b.ano)||0)-(parseInt(a.ano)||0);
+    }); }
+
+    var refisLeis    = _sortExau(exauridas.filter(function(l){ return _exauRefisSet.has(l.id); }));
+    var prorrogLeis  = _sortExau(exauridas.filter(function(l){ return _exauProrrogSet.has(l.id); }));
+    var outrasLeis   = _sortExau(exauridas.filter(function(l){ return !_exauRefisSet.has(l.id) && !_exauProrrogSet.has(l.id); }));
+
+    var exauSubs = '';
+    if(prorrogLeis.length)
+      exauSubs += '<div class="subsec"><div class="subsec-titulo">⏰ Prorrogação de Vencimento de Tributos</div>'
+        +'<div class="grid">'+prorrogLeis.map(cardLeiOuCons).join('')+'</div></div>';
+    if(refisLeis.length)
+      exauSubs += '<div class="subsec"><div class="subsec-titulo">💰 Programas de Recuperação Fiscal (REFIS)</div>'
+        +'<div class="grid">'+refisLeis.map(cardLeiOuCons).join('')+'</div></div>';
+    if(outrasLeis.length)
+      exauSubs += '<div class="subsec"><div class="subsec-titulo">📦 Outras</div>'
+        +'<div class="grid">'+outrasLeis.map(cardLeiOuCons).join('')+'</div></div>';
+
+    h += '<div class="sec" id="sec-exaurida"><div class="sec-hdr">'
+      +'<span class="sec-titulo">&#x1F4E6; Normas com Eficácia Exaurida</span>'
+      +'<span class="sec-n">'+exauridas.length+'</span>'
+      +'</div>'+exauSubs+'</div>';
+  }
 
   var rev=leis.filter(function(l){return l.situacao==='revogada';});
   if(rev.length) h+='<div class="sec" id="sec-rev"><div class="sec-hdr"><span class="sec-titulo">&#x1F5C2; Normas Revogadas</span><span class="sec-n">'+rev.length+'</span></div><div class="grid">'+rev.map(cardN).join('')+'</div></div>';
