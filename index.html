@@ -287,6 +287,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .doc-est-secao{text-align:center;margin:.625rem 0 .25rem;}
 .doc-est-secao .doc-est-label{font-size:12px;font-weight:600;font-style:italic;color:var(--navy);font-family:'IBM Plex Mono',monospace;}
 .doc-est-secao .doc-est-nome{font-size:12px;font-weight:600;font-style:italic;color:var(--navy);font-family:'IBM Plex Mono',monospace;margin-bottom:.25rem;}
+.doc-est-subsecao{text-align:center;margin:.5rem 0 .25rem;}
+.doc-est-subsecao .doc-est-label{font-size:11px;font-weight:600;font-style:italic;color:var(--navy);font-family:'IBM Plex Mono',monospace;}
+.doc-est-subsecao .doc-est-nome{font-size:11px;font-weight:600;font-style:italic;color:var(--navy);font-family:'IBM Plex Mono',monospace;margin-bottom:.2rem;}
 
 /* TABELAS ANEXOS */
 .anexo-table-wrap{overflow-x:auto;margin:.5rem 0;}
@@ -10447,7 +10450,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
       "num": "1.193",
       "ano": "2023",
       "ementa": "Dispõe sobre a retenção na fonte de tributos no pagamento a fornecedores pela Administração Pública Municipal.",
-      "tributo": "geral",
+      "tributo": "issqn",
       "situacao": "vigente",
       "link": "https://drive.google.com/file/d/1WUMnF2Q52VkubF3WqfVzh_8MMvZtOEGC/view?usp=sharing",
       "artigos": [
@@ -71247,7 +71250,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
       "ano": "2022",
       "ementa": "Modifica o Decreto nº 862, de 24 de junho de 2022, que instituiu a Comissão Especial para validação e atualização anual da PGV.",
       "link": "https://drive.google.com/file/d/1vbxmE3SlY0zscMKuDATgVBclKZ-bzIN4/view?usp=sharing",
-      "tributo": "iptu",
+      "tributo": "geral",
       "situacao": "vigente",
       "preambulo": "INSERE O PARÁGRAFO ÚNICO, AO ART. 6º, O § 3º, AO ART. 8º E O § 3º, AO ART. 11, DO DECRETO Nº 862, DE 24 DE JUNHO DE 2022, QUE INSTITUIU A COMISSÃO ESPECIAL PARA VALIDAÇÃO E ATUALIZAÇÃO ANUAL DA PLANTA GENÉRICA DE VALORES VENAIS DOS IMÓVEIS DO MUNICÍPIO DE MARICÁ.",
       "formulaPromulgacao": "O PREFEITO DO MUNICÍPIO DE MARICÁ, no uso de suas atribuições legais, DECRETA:",
@@ -91967,8 +91970,10 @@ function leiFiltrada(l){
 
   // Busca multi-palavra: cada palavra deve aparecer em pelo menos um campo
   var tags = _norm((TAGS[l.id]||[]).join(' '));
+  var numSemPontos = (l.num||'').replace(/\./g,'');
+  var numAnoSemPontos = numSemPontos+'/'+(l.ano||'');
   var campos = _norm([
-    nomeCurto(l), l.num||'', l.ano||'',
+    nomeCurto(l), l.num||'', numSemPontos, numAnoSemPontos, l.ano||'',
     l.ementa||'', l.preambulo||'', l.jom||'',
     l.tributo||'', l.revogadaPor||'', tags
   ].join(' '));
@@ -92132,6 +92137,7 @@ function render(){
   var _secIVOnlySet = new Set([22]);
 
   var tCorpo='';
+  var tCount=0;
   tribsDef.forEach(function(t){
     var extSet = new Set(t.extras||[]);
     // Leis do campo tributo + extras, excluindo as mostradas em outras seções
@@ -92180,8 +92186,9 @@ function render(){
       }
     }
     if(g.length||extraHtml) tCorpo+='<div class="subsec"><div class="subsec-titulo">'+t.e+' '+t.n+'</div><div class="grid">'+g.map(cardLeiOuCons).join('')+'</div>'+extraHtml+'</div>';
+    tCount+=g.length;
   });
-  if(tCorpo) h+='<div class="sec" id="sec-trib"><div class="sec-hdr"><span class="sec-titulo">&#x2696; II &mdash; Normas Tributárias por Espécie</span></div>'+tCorpo+'</div>';
+  if(tCorpo) h+='<div class="sec" id="sec-trib"><div class="sec-hdr"><span class="sec-titulo">&#x2696; II &mdash; Normas Tributárias por Espécie</span><span class="sec-n">'+tCount+'</span></div>'+tCorpo+'</div>';
 
   // ── SEÇÃO III — BENEFÍCIOS FISCAIS ──
   var bIds = [9, 6, 5236, 9236, 12758, 12772];
@@ -92213,10 +92220,11 @@ function render(){
     { titulo:'Parcelamento', ids:[2,18] },
     { titulo:'Pagamento', ids:[37] }, // Dec 173 vai no CATRIMA; Port 31 vai em Exauradas/Prorrogação
     { titulo:'Estrutura e Governança', ids:[36,11,10] },
-    { titulo:'Comitês e Grupos Especiais', ids:[17,50,55,4185] }
+    { titulo:'Comitês e Grupos Especiais', ids:[17,50,55,4185,4215] }
   ];
 
   var admCorpo = '';
+  var admCount = 0;
   admSubtopicos.forEach(function(sub){
     var normas = sub.ids.map(function(id){ return leis.find(function(l){ return l.id===id; }); }).filter(Boolean);
 
@@ -92267,8 +92275,9 @@ function render(){
       admCorpo += '<div class="subsec"><div class="subsec-titulo">'+sub.titulo+'</div>'
         +'<div class="grid">'+normas.map(cardLeiOuCons).join('')+'</div>'
         +extraHtml+'</div>';
+    admCount += normas.length;
   });
-  if(admCorpo) h += '<div class="sec" id="sec-adm"><div class="sec-hdr"><span class="sec-titulo">&#x1F3DB; IV &mdash; Normas Gerais de Administração Tributária</span></div>' + admCorpo + '</div>';
+  if(admCorpo) h += '<div class="sec" id="sec-adm"><div class="sec-hdr"><span class="sec-titulo">&#x1F3DB; IV &mdash; Normas Gerais de Administração Tributária</span><span class="sec-n">'+admCount+'</span></div>' + admCorpo + '</div>';
 
   // ── Normas com Eficácia Exaurida ── organizado em sub-grupos ────────────
   // Exclui editais de IPTU e portarias/decretos CATRIMA (já visíveis nos dropdowns)
@@ -92308,6 +92317,13 @@ function render(){
   }
 
   var rev=leis.filter(function(l){return l.situacao==='revogada';});
+  rev.sort(function(a,b){
+    var oa=_TIPO_ORD[a.tipo]||99, ob=_TIPO_ORD[b.tipo]||99;
+    if(oa!==ob) return oa-ob;
+    var ya=parseInt(a.ano)||0, yb=parseInt(b.ano)||0;
+    if(ya!==yb) return yb-ya;
+    return _numVal(b.num)-_numVal(a.num);
+  });
   if(rev.length) h+='<div class="sec" id="sec-rev"><div class="sec-hdr"><span class="sec-titulo">&#x1F5C2; Normas Revogadas</span><span class="sec-n">'+rev.length+'</span></div><div class="grid">'+rev.map(cardN).join('')+'</div></div>';
   cont.innerHTML=h||'<div class="empty"><div class="empty-ico">§</div><p>Nenhuma norma cadastrada.</p></div>';
 }
@@ -92550,7 +92566,7 @@ function renderArtSimples(d,todos,container){
   if(ESTRUT.has(tp)){
     var div=document.createElement('div');
     div.className='doc-est-'+tp;
-    var up=tp!=='secao';
+    var up=(tp!=='secao'&&tp!=='subsecao');
     var em=(d.texto&&d.texto.trim()&&d.texto.trim()!==d.label.trim())?d.texto.trim():'';
     div.innerHTML='<div class="doc-est-label">'+(up?d.label.toUpperCase():d.label)+'</div>'
       +(em?'<div class="doc-est-nome">'+(up?em.toUpperCase():em)+'</div>':'');
@@ -93739,7 +93755,7 @@ function docImprimir(){
     +'.doc-ementa-bloco{display:flex;justify-content:flex-end;margin-bottom:1rem}'
     +'.doc-ementa-txt{max-width:52%;font-size:11px;text-align:justify}'
     +'.doc-formula{margin:1rem 0;font-size:12px;text-align:justify}'
-    +'.doc-est-titulo,.doc-est-capitulo,.doc-est-secao{text-align:center;margin:1rem 0 .25rem;font-weight:700}'
+    +'.doc-est-titulo,.doc-est-capitulo,.doc-est-secao,.doc-est-subsecao{text-align:center;margin:1rem 0 .25rem;font-weight:700}'
     +'.doc-est-label,.doc-est-nome{display:block}'
     +'.doc-art-row{display:flex;gap:8px;margin-bottom:.4rem;line-height:1.6}'
     +'.doc-art-num{font-weight:700;min-width:60px;flex-shrink:0}'
@@ -93772,7 +93788,7 @@ function docExportarPDF(){
     +'.doc-ementa-bloco{display:flex;justify-content:flex-end;margin-bottom:1rem}'
     +'.doc-ementa-txt{max-width:52%;font-size:11px;text-align:justify}'
     +'.doc-formula{margin:1rem 0;font-size:12px;text-align:justify}'
-    +'.doc-est-titulo,.doc-est-capitulo,.doc-est-secao{text-align:center;margin:1rem 0 .25rem;font-weight:700}'
+    +'.doc-est-titulo,.doc-est-capitulo,.doc-est-secao,.doc-est-subsecao{text-align:center;margin:1rem 0 .25rem;font-weight:700}'
     +'.doc-est-label,.doc-est-nome{display:block}'
     +'.doc-art-row{display:flex;gap:8px;margin-bottom:.4rem;line-height:1.6}'
     +'.doc-art-num{font-weight:700;min-width:60px;flex-shrink:0}'
