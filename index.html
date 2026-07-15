@@ -93315,6 +93315,7 @@ function _renderSidebarEsquerda(){
 
   // Menu rápido — só lista seções/subgrupos que realmente existem na página no momento
   var itensMenu = [
+    { acao:'abrirTabelaUfima()', rot:'💲 Valores da UFIMA' },
     { id:'sec-cod',      rot:'📖 I · Código Tributário' },
     { id:'sec-trib',     rot:'⚖️ II · Por Espécie', subs:[
         {id:'subsec-trib-issqn', rot:'ISSQN'},
@@ -93341,7 +93342,7 @@ function _renderSidebarEsquerda(){
     { id:'sec-rev',      rot:'⛔ Revogadas' }
   ];
   var itensDisponiveis = itensMenu
-    .filter(function(it){ return document.getElementById(it.id); })
+    .filter(function(it){ return it.acao || document.getElementById(it.id); })
     .map(function(it){
       if(!it.subs) return it;
       var subsDisponiveis = it.subs.filter(function(s){ return document.getElementById(s.id); });
@@ -93353,8 +93354,9 @@ function _renderSidebarEsquerda(){
       + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px;padding:0 4px">Navegação Rápida</div>'
       + itensDisponiveis.map(function(it, idx){
           var temSubs = it.subs && it.subs.length > 0;
+          var acaoClick = it.acao ? it.acao : "_scrollParaAncora('"+it.id+"')";
           var linha = '<div style="display:flex;align-items:center;border-radius:6px;transition:.1s" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'transparent\'">'
-            + '<div onclick="_scrollParaAncora(\''+it.id+'\')" style="flex:1;padding:7px 8px;cursor:pointer;color:var(--text)">'+it.rot+'</div>'
+            + '<div onclick="'+acaoClick+'" style="flex:1;padding:7px 8px;cursor:pointer;color:var(--text)">'+it.rot+'</div>'
             + (temSubs ? '<div onclick="_toggleNavSub('+idx+')" id="navarrow-'+idx+'" style="padding:7px 10px;cursor:pointer;color:var(--muted);font-size:10px;user-select:none">▸</div>' : '')
             + '</div>';
           if(temSubs){
@@ -94757,6 +94759,44 @@ function toggleLcMod(){
   if(isOpen){body.classList.remove('open');arrow.classList.remove('open');}
   else{body.classList.add('open');arrow.classList.add('open');}
 }
+var UFIMA_HISTORICO = [
+  {ano:2005, valor:'R$ 60,13'},  {ano:2006, valor:'R$ 66,06'},  {ano:2007, valor:'R$ 77,44'},
+  {ano:2008, valor:'R$ 80,82'},  {ano:2009, valor:'R$ 85,75'},  {ano:2010, valor:'R$ 89,34'},
+  {ano:2011, valor:'R$ 94,51'},  {ano:2012, valor:'R$ 101,41'}, {ano:2013, valor:'R$ 107,06'},
+  {ano:2014, valor:'R$ 113,15'}, {ano:2015, valor:'R$ 120,61'}, {ano:2016, valor:'R$ 132,54'},
+  {ano:2017, valor:'R$ 144,67'}, {ano:2018, valor:'R$ 147,03'}, {ano:2019, valor:'R$ 152,87'},
+  {ano:2020, valor:'R$ 157,06'}, {ano:2021, valor:'R$ 160,75'}, {ano:2022, valor:'R$ 175,56'},
+  {ano:2023, valor:'R$ 196,48'}, {ano:2024, valor:'R$ 202,38'}, {ano:2025, valor:'R$ 209,86'},
+  {ano:2026, valor:'R$ 220,74'}, {ano:2027, valor:'R$ 230,28'}
+];
+
+function abrirTabelaUfima(){
+  var corp = document.getElementById('mcorp');
+  corp.innerHTML = '';
+  var anoAtual = new Date().getFullYear();
+  var linhas = UFIMA_HISTORICO.map(function(u){
+    var atual = u.ano === anoAtual;
+    return '<tr style="'+(atual?'background:#fdf6e8':'')+'">'
+      + '<td style="padding:3px 10px;border-bottom:1px solid var(--border);font-weight:'+(atual?'700':'400')+'">'+u.ano+(atual?' <span style="font-size:10px;color:#8a6d1f;font-weight:700">(atual)</span>':'')+'</td>'
+      + '<td style="padding:3px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:'+(atual?'700':'400')+'">'+u.valor+'</td>'
+      + '</tr>';
+  }).join('');
+  var wrap = document.createElement('div');
+  wrap.innerHTML = '<div style="text-align:center;margin-bottom:18px">'
+    + '<div class="doc-lei-id">Valores da UFIMA — Série Histórica</div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-top:4px">Unidade Fiscal do Município de Maricá</div>'
+    + '</div>'
+    + '<table style="width:280px;margin:0 auto;border-collapse:collapse;font-size:13px">'
+    + '<thead><tr style="background:var(--bg)">'
+      + '<th style="padding:5px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)">Ano</th>'
+      + '<th style="padding:5px 10px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)">Valor</th>'
+      + '</tr></thead>'
+    + '<tbody>'+linhas+'</tbody>'
+    + '</table>';
+  corp.appendChild(wrap);
+  abrir('Valores da UFIMA', null);
+}
+
 function abrir(titulo, lei){
   // Remove (REVOGADO)/(EXAURIDO) do título — essa info vai no modal-sit-bar
   document.getElementById('mtit').textContent=titulo.replace(/\s*\(REVOGAD[OA]\)|\s*\(EXAURID[OA]\)/i,'');
